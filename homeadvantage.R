@@ -12,8 +12,6 @@ seasons <- c('9394','9495','9596','9697','9798','9899','9900','0001','0102','020
 # download.file("http://www.football-data.co.uk/notes.txt", destfile="data_map.txt")
 
 all_results <- list() 
-
-rm(tmp)
 for(season in seasons){
   # download cheat for season
   file_url <- paste0("http://www.football-data.co.uk/mmz4281/",season,"/D1.csv")
@@ -24,7 +22,6 @@ for(season in seasons){
   tmp_df <- na.omit(tmp_df)
   tmp_df$season <- season
   all_results[[which(seasons == season)]] <- tmp_df
-  rm(tmp_df)
 }
 all_results <- do.call(rbind, all_results)
 
@@ -40,10 +37,28 @@ result_comparison <- filter(result_comparison, season != '1718')
 
 ## Plot
 ggplot(result_comparison, aes(x=season, y=HomeWins, group = 1)) + 
-  geom_line(size=2, col='steelblue2') + 
-  geom_line(aes(y=AwayWins), size=2, col='orange') + 
-  geom_line(aes(y=Draw), size=1, col='gray') +
+  geom_line(aes(color='steelblue2'), size=2, show.legend = TRUE) + 
+  #geom_smooth(method="lm") +
+  geom_line(aes(y=AwayWins,  color='orange'), size=2, show.legend=TRUE) + 
+  #geom_smooth(aes(y=AwayWins),method="lm") + 
+  geom_line(aes(y=Draw,  col='gray'), size=1, show.legend=TRUE) +
   xlab("Bundesliga Season") + 
   ylab("Number of Wins") + 
   ggtitle("Home vs. Away Wins in German Bundesliga 1993-2017") + 
-  theme_bw()
+  theme_minimal() +
+  scale_color_manual("",values=c(steelblue2="steelblue2", orange="orange", gray="gray" ),
+                      labels=c("Draw","AwayWin","HomeWin"))
+
+## example
+df <- mtcars
+library(ggplot2)
+ggp <- ggplot(df, aes(x=wt, y=mpg, fill=factor(cyl))) +
+  geom_point(shape=21, size=5)+
+  geom_vline(data=data.frame(x=3),aes(xintercept=x, color="red"), show_guide=TRUE)+
+  geom_vline(data=data.frame(x=4),aes(xintercept=x, color="green"), show_guide=TRUE)+
+  geom_vline(data=data.frame(x=5),aes(xintercept=x, color="blue"), show_guide=TRUE)
+
+ggp +scale_color_manual("Line.Color", values=c(red="red",green="green",blue="blue"),
+                        labels=paste0("Int",1:3))
+
+## Compute avereage per decade seven seasons test 90s vs. 10s
