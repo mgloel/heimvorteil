@@ -24,7 +24,9 @@ for(season in seasons){
   all_results[[which(seasons == season)]] <- tmp_df
 }
 all_results <- do.call(rbind, all_results)
-
+all_results$decade <- as.numeric(substr(all_results$season,1,1))
+all_results$home_success <- ifelse(all_results$FTR == 'H',1 , 0)
+all_results <- filter(all_results, season != '1718')
 ## Compare home away wins per season
 result_comparison <- data.frame(table(all_results$season, all_results$FTR))
 result_comparison <- reshape(result_comparison, idvar = "Var1", timevar = "Var2", direction = "wide")
@@ -33,32 +35,52 @@ names(result_comparison) <- c('season', 'AwayWins', 'Draw', 'HomeWins')
 result_comparison$decade <- as.numeric(substr(result_comparison$season,1,1))
 result_comparison$decade <- plyr::mapvalues(result_comparison$decade, from=c(0,1,9), to=c(2000, 2010, 1990))
 result_comparison$season <- factor(result_comparison$season, ordered = TRUE, levels = seasons)
-result_comparison <- filter(result_comparison, season != '1718')
+
 
 ## Plot
 ggplot(result_comparison, aes(x=season, y=HomeWins, group = 1)) + 
   geom_line(aes(color='steelblue2'), size=2, show.legend = TRUE) + 
-  #geom_smooth(method="lm") +
+  geom_smooth(method="lm") +
   geom_line(aes(y=AwayWins,  color='orange'), size=2, show.legend=TRUE) + 
-  #geom_smooth(aes(y=AwayWins),method="lm") + 
+  geom_smooth(aes(y=AwayWins),method="lm") + 
   geom_line(aes(y=Draw,  col='gray'), size=1, show.legend=TRUE) +
+  geom_smooth(aes(y=Draw),method="lm") +
   xlab("Bundesliga Season") + 
   ylab("Number of Wins") + 
   ggtitle("Home vs. Away Wins in German Bundesliga 1993-2017") + 
   theme_minimal() +
+  theme(axis.text=element_text(size=14), axis.title=element_text(size=14,face="bold")) + 
   scale_color_manual("",values=c(steelblue2="steelblue2", orange="orange", gray="gray" ),
                       labels=c("Draw","AwayWin","HomeWin"))
 
-## example
-df <- mtcars
-library(ggplot2)
-ggp <- ggplot(df, aes(x=wt, y=mpg, fill=factor(cyl))) +
-  geom_point(shape=21, size=5)+
-  geom_vline(data=data.frame(x=3),aes(xintercept=x, color="red"), show_guide=TRUE)+
-  geom_vline(data=data.frame(x=4),aes(xintercept=x, color="green"), show_guide=TRUE)+
-  geom_vline(data=data.frame(x=5),aes(xintercept=x, color="blue"), show_guide=TRUE)
-
-ggp +scale_color_manual("Line.Color", values=c(red="red",green="green",blue="blue"),
-                        labels=paste0("Int",1:3))
+# Percentage of HomeWins every season clearly above 0.33
+result_comparison$perc_homewin <- result_comparison$HomeWins/306
 
 ## Compute avereage per decade seven seasons test 90s vs. 10s
+avg_per_decade <- result_comparison %>%
+                    group_by(decade) %>%
+                    summarize(avg_homewin=mean(HomeWins),
+                              avg_awaywin=mean(AwayWins),
+                              avg_draws=mean(Draw),
+                              no_matches=n()*306)
+
+### Try Bayes AB Testing 
+# try understanding it first :)
+# Source: https://www.r-bloggers.com/bayesian-ab-testing-made-easy/
+library(bayesAB)
+nineties <- filter(all_results, decade==9)
+tens <- filter(all_results, decade==1)
+test1 <- bayesTest(tens$home_success, 
+                   nineties$home_success, 
+                   distribution = "bernoulli", 
+                   priors = c("alpha" = 1071, "beta" = 1071))
+print(test1)
+summary(test1)
+plot(test1)
+
+### Frequentist AB Testing
+
+
+
+
+## ADDITIONAL ADD 2ND BUNDESLIGA
